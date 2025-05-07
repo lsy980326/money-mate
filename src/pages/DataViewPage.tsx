@@ -16,8 +16,8 @@ import {
 import useGoalStore from "../store/goalStore";
 import useIncomeStore from "../store/incomeStore";
 import {
-  calculateRequiredAnnualSavings,
-  calculateRequiredMonthlySavings,
+  calculateRequiredAnnualSavings, // 이 함수는 이제 GoalPage에서 남은 금액 기준으로 사용되므로, 여기서의 의미가 조금 다를 수 있음
+  calculateRequiredMonthlySavings, // 위와 동일
   calculateEstimatedAnnualSavingsCapacity,
   calculateEstimatedMonthlySavingsCapacity,
 } from "../services/calculationService";
@@ -47,6 +47,14 @@ const SummarySection = styled.section`
       font-weight: bold;
     }
   }
+  .highlight {
+    font-weight: bold;
+    color: ${({ theme }) => theme.colors.success};
+  }
+  .warning {
+    font-weight: bold;
+    color: ${({ theme }) => theme.colors.danger};
+  }
 `;
 
 const ChartContainer = styled.div`
@@ -54,7 +62,7 @@ const ChartContainer = styled.div`
   padding: ${({ theme }) => theme.spacings.medium};
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  min-height: 300px; /* 차트 최소 높이 */
+  min-height: 300px;
 
   h4 {
     text-align: center;
@@ -63,7 +71,6 @@ const ChartContainer = styled.div`
   }
 `;
 
-// 월간 예상 생활비 입력 (임시)
 const ExpenseInputContainer = styled.div`
   margin-bottom: ${({ theme }) => theme.spacings.medium};
   label {
@@ -77,10 +84,9 @@ const ExpenseInputContainer = styled.div`
 `;
 
 const DataViewPage: React.FC = () => {
-  const { targetAmount, targetYears } = useGoalStore();
+  const { targetAmount, targetYears, currentSavings } = useGoalStore(); // << currentSavings 추가
   const { netMonthlyIncome } = useIncomeStore();
 
-  // 임시로 월간 예상 생활비 상태 관리
   const [estimatedMonthlyExpenses, setEstimatedMonthlyExpenses] =
     useState<number>(0);
 
@@ -89,12 +95,18 @@ const DataViewPage: React.FC = () => {
     setEstimatedMonthlyExpenses(isNaN(value) || value < 0 ? 0 : value);
   };
 
-  // 계산된 값들
-  const requiredAnnual = calculateRequiredAnnualSavings(
-    targetAmount,
+  // "앞으로" 더 모아야 할 금액
+  const remainingAmountToSave =
+    targetAmount - currentSavings > 0 ? targetAmount - currentSavings : 0;
+
+  // "앞으로" 기간 내에 모으기 위한 필요 저축액
+  const requiredAnnualForFuture = calculateRequiredAnnualSavings(
+    remainingAmountToSave,
     targetYears
   );
-  const requiredMonthly = calculateRequiredMonthlySavings(requiredAnnual);
+  const requiredMonthlyForFuture = calculateRequiredMonthlySavings(
+    requiredAnnualForFuture
+  );
 
   const estimatedAnnualCapacity = calculateEstimatedAnnualSavingsCapacity(
     netMonthlyIncome,
@@ -105,25 +117,38 @@ const DataViewPage: React.FC = () => {
     estimatedMonthlyExpenses
   );
 
-  // 차트 데이터 (월간 기준 비교)
+  // 목표 달성률
+  const achievementRate =
+    targetAmount > 0 ? (currentSavings / targetAmount) * 100 : 0;
+  const isGoalAchieved = currentSavings >= targetAmount && targetAmount > 0;
+
   const monthlyComparisonData = [
-    { name: "목표 월 저축액", value: Math.round(requiredMonthly) },
+    {
+      name: "목표 월 저축액 (앞으로)",
+      value: Math.round(requiredMonthlyForFuture),
+    },
     {
       name: "예상 월 저축 가능액",
       value: Math.round(estimatedMonthlyCapacity),
     },
   ];
 
-  // 목표 달성까지 남은 금액 (간단화된 버전, 현재 저축액 없다고 가정)
-  const remainingAmount = targetAmount > 0 ? targetAmount : 0;
   const progressData = [
-    { name: "현재 달성액 (가상)", value: 0 }, // 실제 저축액 기능 추가 시 변경
-    { name: "남은 목표액", value: remainingAmount },
+    { name: "현재 달성액", value: currentSavings },
+    { name: "남은 목표액", value: remainingAmountToSave },
   ];
-  const COLORS = ["#00C49F", "#FF8042"]; // 초록, 주황
+  const COLORS_PIE = ["#00C49F", "#FFBB28"]; // Pie Chart 색상 (초록, 노랑)
+  const COLORS_BAR = ["#8884d8", "#82ca9d"]; // Bar Chart 색상 (보라, 연두)
 
-  const isValidData =
-    targetAmount > 0 && targetYears > 0 && netMonthlyIncome > 0;
+  const isValidData = targetAmount > 0 && netMonthlyIncome > 0; // targetYears는 이제 남은 기간 계산에만 영향
+
+  // 예상 목표 달성까지 남은 기간 (개월)
+  let monthsToGoal = Infinity;
+  if (estimatedMonthlyCapacity > 0 && remainingAmountToSave > 0) {
+    monthsToGoal = Math.ceil(remainingAmountToSave / estimatedMonthlyCapacity);
+  } else if (isGoalAchieved) {
+    monthsToGoal = 0;
+  }
 
   return (
     <PageContainer>
@@ -142,29 +167,66 @@ const DataViewPage: React.FC = () => {
 
       {!isValidData && (
         <SummarySection>
-          <p>먼저 '목표 설정' 및 '수입 관리' 페이지에서 정보를 입력해주세요.</p>
+          <p>
+            먼저 '목표 설정' 페이지에서 목표금액을, '수입 관리' 페이지에서 수입
+            정보를 입력해주세요.
+          </p>
         </SummarySection>
       )}
 
       {isValidData && (
         <>
           <SummarySection>
-            <h3>목표 달성을 위한 필요 저축액</h3>
+            <h3>목표 현황</h3>
             <p>
-              <strong>연간 필요 저축액:</strong>{" "}
-              {requiredAnnual.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}{" "}
+              <strong>총 목표 금액:</strong> {targetAmount.toLocaleString()} 원
+            </p>
+            <p>
+              <strong>현재까지 모은 금액:</strong>{" "}
+              <span className={isGoalAchieved ? "highlight" : ""}>
+                {currentSavings.toLocaleString()}
+              </span>{" "}
               원
             </p>
             <p>
-              <strong>월간 필요 저축액:</strong>{" "}
-              {requiredMonthly.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}{" "}
-              원
+              <strong>목표 달성률:</strong>{" "}
+              <span className={isGoalAchieved ? "highlight" : ""}>
+                {achievementRate.toFixed(1)}%
+              </span>
             </p>
+            {!isGoalAchieved && (
+              <p>
+                <strong>목표까지 남은 금액:</strong>{" "}
+                {remainingAmountToSave.toLocaleString()} 원
+              </p>
+            )}
+            {isGoalAchieved && (
+              <p className="highlight">🎉 목표를 이미 달성하셨습니다!</p>
+            )}
           </SummarySection>
+
+          {!isGoalAchieved && (
+            <SummarySection>
+              <h3>목표 달성을 위한 필요 저축액 (앞으로 남은 기간 기준)</h3>
+              <p>
+                <strong>남은 목표 기간:</strong> {targetYears} 년
+              </p>
+              <p>
+                <strong>연간 필요 저축액:</strong>{" "}
+                {requiredAnnualForFuture.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}{" "}
+                원
+              </p>
+              <p>
+                <strong>월간 필요 저축액:</strong>{" "}
+                {requiredMonthlyForFuture.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}{" "}
+                원
+              </p>
+            </SummarySection>
+          )}
 
           <SummarySection>
             <h3>현재 수입 기준 예상 저축 가능액</h3>
@@ -182,56 +244,82 @@ const DataViewPage: React.FC = () => {
               })}{" "}
               원
             </p>
-            {estimatedMonthlyCapacity < requiredMonthly && (
-              <p style={{ color: "red", marginTop: "10px" }}>
-                ⚠️ 목표 달성을 위해 월{" "}
-                {(requiredMonthly - estimatedMonthlyCapacity).toLocaleString(
-                  undefined,
-                  { maximumFractionDigits: 0 }
-                )}{" "}
-                원이 더 필요합니다.
+            {!isGoalAchieved && estimatedMonthlyCapacity > 0 && (
+              <p>
+                현재 저축페이스라면 목표 달성까지 약
+                <span className="highlight">
+                  {" "}
+                  {monthsToGoal !== Infinity
+                    ? `${Math.floor(monthsToGoal / 12)}년 ${
+                        monthsToGoal % 12
+                      }개월`
+                    : "오랜 시간"}{" "}
+                </span>
+                소요 예상됩니다.
               </p>
             )}
-            {estimatedMonthlyCapacity >= requiredMonthly && (
-              <p style={{ color: "green", marginTop: "10px" }}>
-                🎉 현재 수입으로 목표 월 저축액 달성이 가능합니다!
+            {!isGoalAchieved &&
+              estimatedMonthlyCapacity < requiredMonthlyForFuture &&
+              estimatedMonthlyCapacity > 0 && (
+                <p className="warning">
+                  ⚠️ 목표 달성을 위해 월{" "}
+                  {(
+                    requiredMonthlyForFuture - estimatedMonthlyCapacity
+                  ).toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })}{" "}
+                  원이 더 필요합니다.
+                </p>
+              )}
+            {!isGoalAchieved && estimatedMonthlyCapacity <= 0 && (
+              <p className="warning">
+                ⚠️ 현재 생활비로는 저축이 어렵습니다. 생활비 조절이 필요합니다.
               </p>
             )}
+            {!isGoalAchieved &&
+              estimatedMonthlyCapacity >= requiredMonthlyForFuture && (
+                <p className="highlight">
+                  🎉 현재 수입으로 목표 월 저축액 달성이 가능합니다!
+                </p>
+              )}
           </SummarySection>
 
-          <ChartContainer>
-            <h4>월간 저축액 비교</h4>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={monthlyComparisonData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis
-                  tickFormatter={(value) =>
-                    `${(value / 10000).toLocaleString()} 만원`
-                  }
-                />
-                <Tooltip
-                  formatter={(value: number) => `${value.toLocaleString()} 원`}
-                />
-                <Legend />
-                <Bar dataKey="value" name="금액 (원)">
-                  {monthlyComparisonData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          {!isGoalAchieved && (
+            <ChartContainer>
+              <h4>월간 저축액 비교 (앞으로 필요한 금액 vs 가능액)</h4>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={monthlyComparisonData}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis
+                    tickFormatter={(value) =>
+                      `${(value / 10000).toLocaleString()} 만원`
+                    }
+                  />
+                  <Tooltip
+                    formatter={(value: number) =>
+                      `${value.toLocaleString()} 원`
+                    }
+                  />
+                  <Legend />
+                  <Bar dataKey="value" name="금액 (원)">
+                    {monthlyComparisonData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS_BAR[index % COLORS_BAR.length]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          )}
 
-          {/* 간단한 목표 달성도 (현재 저축액이 없으므로 항상 0%로 표시됨) */}
-          {/* <ChartContainer>
-            <h4>목표 달성도 (가상)</h4>
+          <ChartContainer>
+            <h4>목표 달성도</h4>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -239,20 +327,27 @@ const DataViewPage: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
+                  outerRadius={100} // 크기 약간 키움
                   fill="#8884d8"
                   dataKey="value"
                 >
                   {progressData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS_PIE[index % COLORS_PIE.length]}
+                    />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => `${value.toLocaleString()} 원`} />
+                <Tooltip
+                  formatter={(value: number) => `${value.toLocaleString()} 원`}
+                />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
-          </ChartContainer> */}
+          </ChartContainer>
         </>
       )}
     </PageContainer>

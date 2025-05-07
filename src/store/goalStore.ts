@@ -1,31 +1,37 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware"; // persist와 createJSONStorage import
+import { persist, createJSONStorage } from "zustand/middleware";
 
 // 목표 상태의 타입 정의
 interface GoalState {
   targetAmount: number;
   targetYears: number;
+  currentSavings: number; // << 추가됨
 }
 
 // 액션 타입 정의
 interface GoalActions {
   setTargetAmount: (amount: number) => void;
   setTargetYears: (years: number) => void;
+  setCurrentSavings: (savings: number) => void; // << 추가됨
   setGoal: (goal: Partial<GoalState>) => void;
   resetGoal: () => void;
 }
 
-// 초기 상태 (persist 미들웨어 사용 시, 초기값은 persist 옵션 내에서 설정 가능)
+// 초기 상태
 const initialState: GoalState = {
   targetAmount: 0,
   targetYears: 10,
+  currentSavings: 0, // << 추가됨
 };
 
 // 스토어 생성
 const useGoalStore = create(
-  persist<GoalState & GoalActions>( // persist 미들웨어로 감싸기
+  persist<GoalState & GoalActions>(
     (set) => ({
-      ...initialState, // 초기 상태는 여기서도 정의할 수 있지만, persist 옵션에서 하는 것이 일반적
+      // 초기 상태값들을 직접 할당
+      targetAmount: initialState.targetAmount,
+      targetYears: initialState.targetYears,
+      currentSavings: initialState.currentSavings, // << 추가됨
 
       setTargetAmount: (amount) =>
         set((state) => ({ targetAmount: amount > 0 ? amount : 0 })),
@@ -33,12 +39,16 @@ const useGoalStore = create(
       setTargetYears: (years) =>
         set((state) => ({ targetYears: years > 0 ? years : 1 })),
 
+      setCurrentSavings: (
+        savings // << 추가됨
+      ) => set((state) => ({ currentSavings: savings >= 0 ? savings : 0 })),
+
       setGoal: (goal) => set((state) => ({ ...state, ...goal })),
 
-      resetGoal: () => set(initialState), // resetGoal은 초기 상태(initialState)로 돌림
+      resetGoal: () => set(initialState),
     }),
     {
-      name: "money-mate-goal-storage", // LocalStorage에 저장될 때 사용될 키 이름
+      name: "money-mate-goal-storage",
       storage: createJSONStorage(() => localStorage),
     }
   )

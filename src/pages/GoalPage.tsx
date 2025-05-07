@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import useGoalStore from "../store/goalStore"; // Zustand 스토어 import
+import useGoalStore from "../store/goalStore";
 
+// 스타일 컴포넌트는 이전과 동일하게 유지 (또는 공통 컴포넌트로 분리)
 const PageContainer = styled.div`
   padding: ${({ theme }) => theme.spacings.large};
 `;
@@ -58,44 +59,52 @@ const InfoDisplay = styled.div`
 `;
 
 const GoalPage: React.FC = () => {
-  // Zustand 스토어에서 상태와 액션 가져오기
-  const { targetAmount, targetYears, setTargetAmount, setTargetYears } =
-    useGoalStore();
+  const {
+    targetAmount,
+    targetYears,
+    currentSavings, // << 추가됨
+    setTargetAmount,
+    setTargetYears,
+    setCurrentSavings, // << 추가됨
+  } = useGoalStore();
 
-  // 로컬 상태로 입력 값 관리
   const [localTargetAmount, setLocalTargetAmount] = useState<string>(
     targetAmount.toString()
   );
   const [localTargetYears, setLocalTargetYears] = useState<string>(
     targetYears.toString()
   );
+  const [localCurrentSavings, setLocalCurrentSavings] = useState<string>(
+    currentSavings.toString()
+  ); // << 추가됨
 
-  // Zustand 상태가 변경되면 로컬 상태도 업데이트
   useEffect(() => {
     setLocalTargetAmount(targetAmount.toString());
   }, [targetAmount]);
-
   useEffect(() => {
     setLocalTargetYears(targetYears.toString());
   }, [targetYears]);
+  useEffect(() => {
+    setLocalCurrentSavings(currentSavings.toString());
+  }, [currentSavings]); // << 추가됨
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const amount = parseFloat(localTargetAmount);
     const years = parseInt(localTargetYears, 10);
+    const savings = parseFloat(localCurrentSavings); // << 추가됨
 
-    if (!isNaN(amount)) {
-      setTargetAmount(amount); // Zustand 액션 호출
-    }
-    if (!isNaN(years)) {
-      setTargetYears(years); // Zustand 액션 호출
-    }
+    if (!isNaN(amount)) setTargetAmount(amount);
+    if (!isNaN(years)) setTargetYears(years);
+    if (!isNaN(savings)) setCurrentSavings(savings); // << 추가됨
+
     alert("목표가 저장되었습니다!");
   };
 
   const requiredAnnualSavings =
-    targetYears > 0 ? targetAmount / targetYears : 0;
-  const requiredMonthlySavings = requiredAnnualSavings / 12;
+    targetYears > 0 ? (targetAmount - currentSavings) / targetYears : 0; // << 수정됨: 남은 금액 기준
+  const requiredMonthlySavings =
+    requiredAnnualSavings > 0 ? requiredAnnualSavings / 12 : 0;
 
   return (
     <PageContainer>
@@ -122,6 +131,20 @@ const GoalPage: React.FC = () => {
             min="1"
           />
         </FormGroup>
+        <FormGroup>
+          {" "}
+          {/* << 추가된 부분 시작 */}
+          <label htmlFor="currentSavings">현재까지 모은 금액 (원):</label>
+          <input
+            type="number"
+            id="currentSavings"
+            value={localCurrentSavings}
+            onChange={(e) => setLocalCurrentSavings(e.target.value)}
+            placeholder="예: 5000000"
+            min="0"
+          />
+        </FormGroup>{" "}
+        {/* << 추가된 부분 끝 */}
         <Button type="submit">목표 저장</Button>
       </Form>
 
@@ -129,23 +152,32 @@ const GoalPage: React.FC = () => {
         <h3>설정된 목표</h3>
         <p>목표 금액: {targetAmount.toLocaleString()} 원</p>
         <p>목표 기간: {targetYears} 년</p>
+        <p>현재까지 모은 금액: {currentSavings.toLocaleString()} 원</p>{" "}
+        {/* << 추가됨 */}
         {targetAmount > 0 && targetYears > 0 && (
           <>
             <hr style={{ margin: "10px 0" }} />
             <p>
-              연간 필요 저축액:{" "}
-              {requiredAnnualSavings.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}{" "}
+              <strong>앞으로</strong> 연간 필요 저축액:{" "}
+              {requiredAnnualSavings > 0
+                ? requiredAnnualSavings.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })
+                : "0"}{" "}
               원
             </p>
             <p>
-              월간 필요 저축액:{" "}
-              {requiredMonthlySavings.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}{" "}
+              <strong>앞으로</strong> 월간 필요 저축액:{" "}
+              {requiredMonthlySavings > 0
+                ? requiredMonthlySavings.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })
+                : "0"}{" "}
               원
             </p>
+            {currentSavings >= targetAmount && (
+              <p style={{ color: "green" }}>🎉 목표를 이미 달성하셨습니다!</p>
+            )}
           </>
         )}
       </InfoDisplay>
