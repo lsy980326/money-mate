@@ -1,71 +1,24 @@
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
+// import styled from 'styled-components'; // 페이지 내 스타일 정의 삭제
 import useGoalStore from "../store/goalStore";
+import PageContainer from "../components/common/PageContainer"; // 공통 컴포넌트 import
+import Card from "../components/common/Card"; // 공통 컴포넌트 import
+import {
+  FormContainer,
+  FormGroup,
+  StyledButton,
+} from "../components/common/StyledForm"; // 공통 컴포넌트 import
 
-// 스타일 컴포넌트는 이전과 동일하게 유지 (또는 공통 컴포넌트로 분리)
-const PageContainer = styled.div`
-  padding: ${({ theme }) => theme.spacings.large};
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacings.medium};
-  max-width: 400px;
-  margin-bottom: ${({ theme }) => theme.spacings.large};
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  label {
-    margin-bottom: ${({ theme }) => theme.spacings.xsmall};
-    font-weight: bold;
-  }
-  input {
-    padding: ${({ theme }) => theme.spacings.small};
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: ${({ theme }) => theme.fontSizes.medium};
-  }
-`;
-
-const Button = styled.button`
-  padding: ${({ theme }) => theme.spacings.medium};
-  background-color: ${({ theme }) => theme.colors.primary};
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: ${({ theme }) => theme.fontSizes.medium};
-  cursor: pointer;
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.dark};
-  }
-`;
-
-const InfoDisplay = styled.div`
-  margin-top: ${({ theme }) => theme.spacings.large};
-  padding: ${({ theme }) => theme.spacings.medium};
-  background-color: ${({ theme }) => theme.colors.light};
-  border: 1px solid #eee;
-  border-radius: 4px;
-
-  h3 {
-    margin-bottom: ${({ theme }) => theme.spacings.small};
-  }
-  p {
-    font-size: ${({ theme }) => theme.fontSizes.medium};
-  }
-`;
+// 페이지 내에 있던 스타일 컴포넌트 정의들(PageContainer, Form, FormGroup, Button, InfoDisplay)은 삭제합니다.
 
 const GoalPage: React.FC = () => {
   const {
     targetAmount,
     targetYears,
-    currentSavings, // << 추가됨
+    currentSavings,
     setTargetAmount,
     setTargetYears,
-    setCurrentSavings, // << 추가됨
+    setCurrentSavings,
   } = useGoalStore();
 
   const [localTargetAmount, setLocalTargetAmount] = useState<string>(
@@ -76,7 +29,7 @@ const GoalPage: React.FC = () => {
   );
   const [localCurrentSavings, setLocalCurrentSavings] = useState<string>(
     currentSavings.toString()
-  ); // << 추가됨
+  );
 
   useEffect(() => {
     setLocalTargetAmount(targetAmount.toString());
@@ -86,31 +39,38 @@ const GoalPage: React.FC = () => {
   }, [targetYears]);
   useEffect(() => {
     setLocalCurrentSavings(currentSavings.toString());
-  }, [currentSavings]); // << 추가됨
+  }, [currentSavings]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const amount = parseFloat(localTargetAmount);
     const years = parseInt(localTargetYears, 10);
-    const savings = parseFloat(localCurrentSavings); // << 추가됨
+    const savings = parseFloat(localCurrentSavings);
 
     if (!isNaN(amount)) setTargetAmount(amount);
     if (!isNaN(years)) setTargetYears(years);
-    if (!isNaN(savings)) setCurrentSavings(savings); // << 추가됨
+    if (!isNaN(savings)) setCurrentSavings(savings);
 
-    alert("목표가 저장되었습니다!");
+    alert("목표가 저장되었습니다!"); // 나중에 토스트 메시지 등으로 개선 가능
   };
 
   const requiredAnnualSavings =
-    targetYears > 0 ? (targetAmount - currentSavings) / targetYears : 0; // << 수정됨: 남은 금액 기준
+    targetYears > 0 ? (targetAmount - currentSavings) / targetYears : 0;
   const requiredMonthlySavings =
     requiredAnnualSavings > 0 ? requiredAnnualSavings / 12 : 0;
+  const isGoalAchieved = currentSavings >= targetAmount && targetAmount > 0;
 
   return (
     <PageContainer>
+      {" "}
+      {/* 공통 PageContainer 사용 */}
       <h2>목표 설정</h2>
-      <Form onSubmit={handleSubmit}>
+      <FormContainer onSubmit={handleSubmit}>
+        {" "}
+        {/* 공통 FormContainer 사용 */}
         <FormGroup>
+          {" "}
+          {/* 공통 FormGroup 사용 */}
           <label htmlFor="targetAmount">목표 금액 (원):</label>
           <input
             type="number"
@@ -132,8 +92,6 @@ const GoalPage: React.FC = () => {
           />
         </FormGroup>
         <FormGroup>
-          {" "}
-          {/* << 추가된 부분 시작 */}
           <label htmlFor="currentSavings">현재까지 모은 금액 (원):</label>
           <input
             type="number"
@@ -143,44 +101,52 @@ const GoalPage: React.FC = () => {
             placeholder="예: 5000000"
             min="0"
           />
-        </FormGroup>{" "}
-        {/* << 추가된 부분 끝 */}
-        <Button type="submit">목표 저장</Button>
-      </Form>
-
-      <InfoDisplay>
-        <h3>설정된 목표</h3>
+        </FormGroup>
+        <StyledButton type="submit">목표 저장</StyledButton>{" "}
+        {/* 공통 StyledButton 사용 */}
+      </FormContainer>
+      <Card title="설정된 목표">
+        {" "}
+        {/* 공통 Card 사용, title prop 활용 */}
         <p>목표 금액: {targetAmount.toLocaleString()} 원</p>
         <p>목표 기간: {targetYears} 년</p>
-        <p>현재까지 모은 금액: {currentSavings.toLocaleString()} 원</p>{" "}
-        {/* << 추가됨 */}
-        {targetAmount > 0 && targetYears > 0 && (
+        <p>현재까지 모은 금액: {currentSavings.toLocaleString()} 원</p>
+        {(targetAmount > 0 || currentSavings > 0) && ( // 목표 금액이나 현재 저축액이 있을 때만 표시
           <>
             <hr style={{ margin: "10px 0" }} />
-            <p>
-              <strong>앞으로</strong> 연간 필요 저축액:{" "}
-              {requiredAnnualSavings > 0
-                ? requiredAnnualSavings.toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                  })
-                : "0"}{" "}
-              원
-            </p>
-            <p>
-              <strong>앞으로</strong> 월간 필요 저축액:{" "}
-              {requiredMonthlySavings > 0
-                ? requiredMonthlySavings.toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                  })
-                : "0"}{" "}
-              원
-            </p>
-            {currentSavings >= targetAmount && (
-              <p style={{ color: "green" }}>🎉 목표를 이미 달성하셨습니다!</p>
+            {!isGoalAchieved && targetYears > 0 && (
+              <>
+                <p>
+                  <strong>앞으로</strong> 연간 필요 저축액:{" "}
+                  {requiredAnnualSavings > 0
+                    ? requiredAnnualSavings.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })
+                    : "0"}{" "}
+                  원
+                </p>
+                <p>
+                  <strong>앞으로</strong> 월간 필요 저축액:{" "}
+                  {requiredMonthlySavings > 0
+                    ? requiredMonthlySavings.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })
+                    : "0"}{" "}
+                  원
+                </p>
+              </>
+            )}
+            {isGoalAchieved && (
+              <p style={{ color: "green", fontWeight: "bold" }}>
+                🎉 목표를 이미 달성하셨습니다!
+              </p>
             )}
           </>
         )}
-      </InfoDisplay>
+        {targetAmount <= 0 && currentSavings <= 0 && (
+          <p>목표를 설정해주세요.</p>
+        )}
+      </Card>
     </PageContainer>
   );
 };

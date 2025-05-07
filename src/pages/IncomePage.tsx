@@ -1,61 +1,15 @@
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
-import useIncomeStore from "../store/incomeStore"; // incomeStore import
+// import styled from 'styled-components'; // 페이지 내 스타일 정의 삭제
+import useIncomeStore from "../store/incomeStore";
+import PageContainer from "../components/common/PageContainer"; // 공통 컴포넌트 import
+import Card from "../components/common/Card"; // 공통 컴포넌트 import
+import {
+  FormContainer,
+  FormGroup,
+  StyledButton,
+} from "../components/common/StyledForm"; // 공통 컴포넌트 import
 
-const PageContainer = styled.div`
-  padding: ${({ theme }) => theme.spacings.large};
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacings.medium};
-  max-width: 400px;
-  margin-bottom: ${({ theme }) => theme.spacings.large};
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  label {
-    margin-bottom: ${({ theme }) => theme.spacings.xsmall};
-    font-weight: bold;
-  }
-  input {
-    padding: ${({ theme }) => theme.spacings.small};
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: ${({ theme }) => theme.fontSizes.medium};
-  }
-`;
-
-const Button = styled.button`
-  padding: ${({ theme }) => theme.spacings.medium};
-  background-color: ${({ theme }) => theme.colors.primary};
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: ${({ theme }) => theme.fontSizes.medium};
-  cursor: pointer;
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.dark};
-  }
-`;
-
-const InfoDisplay = styled.div`
-  margin-top: ${({ theme }) => theme.spacings.large};
-  padding: ${({ theme }) => theme.spacings.medium};
-  background-color: ${({ theme }) => theme.colors.light};
-  border: 1px solid #eee;
-  border-radius: 4px;
-
-  h3 {
-    margin-bottom: ${({ theme }) => theme.spacings.small};
-  }
-  p {
-    font-size: ${({ theme }) => theme.fontSizes.medium};
-  }
-`;
+// 페이지 내에 있던 스타일 컴포넌트 정의들(PageContainer, Form, FormGroup, Button, InfoDisplay)은 삭제합니다.
 
 const IncomePage: React.FC = () => {
   const {
@@ -67,7 +21,6 @@ const IncomePage: React.FC = () => {
     setExpectedAnnualRaiseRate,
   } = useIncomeStore();
 
-  // 로컬 상태로 입력 값 관리
   const [localAnnualSalary, setLocalAnnualSalary] = useState<string>(
     annualSalary.toString()
   );
@@ -78,7 +31,6 @@ const IncomePage: React.FC = () => {
     expectedAnnualRaiseRate.toString()
   );
 
-  // Zustand 상태가 변경되면 로컬 상태도 업데이트
   useEffect(() => {
     setLocalAnnualSalary(annualSalary.toString());
   }, [annualSalary]);
@@ -99,14 +51,20 @@ const IncomePage: React.FC = () => {
     if (!isNaN(monthlyIncome)) setNetMonthlyIncome(monthlyIncome);
     if (!isNaN(raiseRate)) setExpectedAnnualRaiseRate(raiseRate);
 
-    alert("수입 정보가 저장되었습니다!");
+    alert("수입 정보가 저장되었습니다!"); // 나중에 토스트 메시지 등으로 개선 가능
   };
 
   return (
     <PageContainer>
+      {" "}
+      {/* 공통 PageContainer 사용 */}
       <h2>수입 정보 관리</h2>
-      <Form onSubmit={handleSubmit}>
+      <FormContainer onSubmit={handleSubmit}>
+        {" "}
+        {/* 공통 FormContainer 사용 */}
         <FormGroup>
+          {" "}
+          {/* 공통 FormGroup 사용 */}
           <label htmlFor="annualSalary">연봉 (세전, 원):</label>
           <input
             type="number"
@@ -138,15 +96,16 @@ const IncomePage: React.FC = () => {
             max="100"
           />
         </FormGroup>
-        <Button type="submit">수입 정보 저장</Button>
-      </Form>
-
-      <InfoDisplay>
-        <h3>현재 수입 정보</h3>
+        <StyledButton type="submit">수입 정보 저장</StyledButton>{" "}
+        {/* 공통 StyledButton 사용 */}
+      </FormContainer>
+      <Card title="현재 수입 정보">
+        {" "}
+        {/* 공통 Card 사용, title prop 활용 */}
         <p>연봉 (세전): {annualSalary.toLocaleString()} 원</p>
         <p>월 실수령액: {netMonthlyIncome.toLocaleString()} 원</p>
         <p>예상 연봉 상승률: {expectedAnnualRaiseRate} %</p>
-      </InfoDisplay>
+      </Card>
     </PageContainer>
   );
 };
